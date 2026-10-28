@@ -18,6 +18,11 @@ float lastX = 640.0f;
 float lastY = 360.0f;
 bool firstMouse = true;
 
+bool lampOn = true;
+bool ceilingOn = true;
+bool lWasDown = false;
+bool kWasDown = false;
+
 struct Surface
 {
     glm::mat4 model;
@@ -45,6 +50,14 @@ void mouseCallback(GLFWwindow* window, double xpos, double ypos)
     lastY = y;
 }
 
+bool keyPressedOnce(GLFWwindow* window, int key, bool& wasDown)
+{
+    bool down = glfwGetKey(window, key) == GLFW_PRESS;
+    bool pressed = down && !wasDown;
+    wasDown = down;
+    return pressed;
+}
+
 void processInput(GLFWwindow* window, float dt)
 {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
@@ -53,6 +66,9 @@ void processInput(GLFWwindow* window, float dt)
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) camera.move(Move::Backward, dt);
     if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) camera.move(Move::Left, dt);
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) camera.move(Move::Right, dt);
+
+    if (keyPressedOnce(window, GLFW_KEY_L, lWasDown)) lampOn = !lampOn;
+    if (keyPressedOnce(window, GLFW_KEY_K, kWasDown)) ceilingOn = !ceilingOn;
 
     float margin = 0.3f;
     camera.position.x = glm::clamp(camera.position.x, -ROOM_W / 2 + margin, ROOM_W / 2 - margin);
@@ -245,6 +261,8 @@ int main()
     unsigned int whiteTex = makeColorTexture(235, 235, 230);
     unsigned int blueTex = makeColorTexture(90, 120, 170);
     unsigned int darkTex = makeColorTexture(60, 60, 65);
+    unsigned int creamTex = makeColorTexture(240, 225, 190);
+    unsigned int bulbTex = makeColorTexture(255, 240, 200);
 
     const float W = ROOM_W, H = ROOM_H, D = ROOM_D;
     std::vector<Surface> room = {
@@ -273,11 +291,22 @@ int main()
         { boxModel(glm::vec3(1.3f, 0.2f, -1.2f), glm::vec3(0.04f, 0.4f, 0.04f)), darkTex, glm::vec2(1.0f, 1.0f) },
         { boxModel(glm::vec3(0.9f, 0.2f, -0.8f), glm::vec3(0.04f, 0.4f, 0.04f)), darkTex, glm::vec2(1.0f, 1.0f) },
         { boxModel(glm::vec3(1.3f, 0.2f, -0.8f), glm::vec3(0.04f, 0.4f, 0.04f)), darkTex, glm::vec2(1.0f, 1.0f) },
-        { boxModel(glm::vec3(0.895f, 0.675f, -1.0f), glm::vec3(0.04f, 0.45f, 0.45f)), darkTex, glm::vec2(1.0f, 1.0f) }
+        { boxModel(glm::vec3(0.895f, 0.675f, -1.0f), glm::vec3(0.04f, 0.45f, 0.45f)), darkTex, glm::vec2(1.0f, 1.0f) },
+
+        { boxModel(glm::vec3(1.8f, 0.765f, -1.4f), glm::vec3(0.15f, 0.03f, 0.15f)), darkTex, glm::vec2(1.0f, 1.0f) },
+        { boxModel(glm::vec3(1.8f, 0.955f, -1.4f), glm::vec3(0.025f, 0.35f, 0.025f)), darkTex, glm::vec2(1.0f, 1.0f) },
+        { boxModel(glm::vec3(1.8f, 1.19f, -1.4f), glm::vec3(0.22f, 0.12f, 0.22f)), creamTex, glm::vec2(1.0f, 1.0f) }
     };
 
-    glm::vec3 lightPos(0.0f, H - 0.2f, 0.0f);
-    glm::vec3 lightColor(1.0f, 0.95f, 0.85f);
+    std::vector<Surface> bulb = {
+        { boxModel(glm::vec3(1.8f, 1.11f, -1.4f), glm::vec3(0.08f, 0.06f, 0.08f)), bulbTex, glm::vec2(1.0f, 1.0f) }
+    };
+
+    glm::vec3 ceilingPos(0.0f, H - 0.2f, 0.0f);
+    glm::vec3 ceilingColor(1.0f, 0.95f, 0.85f);
+    glm::vec3 lampPos(1.8f, 1.05f, -1.4f);
+    glm::vec3 lampColor(1.0f, 0.75f, 0.45f);
+    glm::vec3 bulbGlow(1.0f, 0.85f, 0.5f);
 
     float lastFrame = 0.0f;
     while (!glfwWindowShouldClose(window))
@@ -302,13 +331,22 @@ int main()
         shader.setMat4("projection", glm::perspective(glm::radians(camera.fov), (float)fbW / fbH, 0.1f, 100.0f));
         shader.setMat4("view", camera.view());
         shader.setVec3("viewPos", camera.position);
-        shader.setVec3("lightPos", lightPos);
-        shader.setVec3("lightColor", lightColor);
+        shader.setVec3("lightPos[0]", ceilingPos);
+        shader.setVec3("lightColor[0]", ceilingColor);
+        shader.setFloat("lightIntensity[0]", ceilingOn ? 1.0f : 0.0f);
+        shader.setVec3("lightPos[1]", lampPos);
+        shader.setVec3("lightColor[1]", lampColor);
+        shader.setFloat("lightIntensity[1]", lampOn ? 1.5f : 0.0f);
+        shader.setFloat("ambient", ceilingOn ? 0.15f : 0.04f);
         shader.setInt("tex", 0);
         glActiveTexture(GL_TEXTURE0);
 
+        shader.setVec3("emissive", glm::vec3(0.0f));
         drawSurfaces(shader, quad, 6, room);
         drawSurfaces(shader, cube, 36, furniture);
+
+        shader.setVec3("emissive", lampOn ? bulbGlow : glm::vec3(0.0f));
+        drawSurfaces(shader, cube, 36, bulb);
 
         glfwSwapBuffers(window);
         glfwPollEvents();
