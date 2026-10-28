@@ -22,4 +22,20 @@
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="src\Shader.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Camera.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="shaders\basic.vert">
+      <Filter>资源文件</Filter>
+    </None>
+    <None Include="shaders\basic.frag">
+      <Filter>资源文件</Filter>
+    </None>
+  </ItemGroup>
 </Project>
