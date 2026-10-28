@@ -244,6 +244,7 @@ int main()
     unsigned int wallTex = loadTexture("assets/textures/wall.jpg");
     unsigned int whiteTex = makeColorTexture(235, 235, 230);
     unsigned int blueTex = makeColorTexture(90, 120, 170);
+    unsigned int darkTex = makeColorTexture(60, 60, 65);
 
     const float W = ROOM_W, H = ROOM_H, D = ROOM_D;
     std::vector<Surface> room = {
@@ -259,7 +260,20 @@ int main()
         { boxModel(glm::vec3(-1.4f, 0.175f, -1.0f), glm::vec3(1.2f, 0.35f, 2.0f)), floorTex, glm::vec2(1.0f, 1.0f) },
         { boxModel(glm::vec3(-1.4f, 0.45f, -0.95f), glm::vec3(1.1f, 0.2f, 1.85f)), blueTex, glm::vec2(1.0f, 1.0f) },
         { boxModel(glm::vec3(-1.4f, 0.61f, -1.7f), glm::vec3(0.8f, 0.12f, 0.35f)), whiteTex, glm::vec2(1.0f, 1.0f) },
-        { boxModel(glm::vec3(-1.4f, 0.5f, -1.96f), glm::vec3(1.2f, 1.0f, 0.08f)), floorTex, glm::vec2(1.0f, 1.0f) }
+        { boxModel(glm::vec3(-1.4f, 0.5f, -1.96f), glm::vec3(1.2f, 1.0f, 0.08f)), floorTex, glm::vec2(1.0f, 1.0f) },
+
+        { boxModel(glm::vec3(1.7f, 0.73f, -1.0f), glm::vec3(0.6f, 0.04f, 1.2f)), floorTex, glm::vec2(1.0f, 1.0f) },
+        { boxModel(glm::vec3(1.45f, 0.355f, -1.55f), glm::vec3(0.05f, 0.71f, 0.05f)), floorTex, glm::vec2(1.0f, 1.0f) },
+        { boxModel(glm::vec3(1.95f, 0.355f, -1.55f), glm::vec3(0.05f, 0.71f, 0.05f)), floorTex, glm::vec2(1.0f, 1.0f) },
+        { boxModel(glm::vec3(1.45f, 0.355f, -0.45f), glm::vec3(0.05f, 0.71f, 0.05f)), floorTex, glm::vec2(1.0f, 1.0f) },
+        { boxModel(glm::vec3(1.95f, 0.355f, -0.45f), glm::vec3(0.05f, 0.71f, 0.05f)), floorTex, glm::vec2(1.0f, 1.0f) },
+
+        { boxModel(glm::vec3(1.1f, 0.425f, -1.0f), glm::vec3(0.45f, 0.05f, 0.45f)), darkTex, glm::vec2(1.0f, 1.0f) },
+        { boxModel(glm::vec3(0.9f, 0.2f, -1.2f), glm::vec3(0.04f, 0.4f, 0.04f)), darkTex, glm::vec2(1.0f, 1.0f) },
+        { boxModel(glm::vec3(1.3f, 0.2f, -1.2f), glm::vec3(0.04f, 0.4f, 0.04f)), darkTex, glm::vec2(1.0f, 1.0f) },
+        { boxModel(glm::vec3(0.9f, 0.2f, -0.8f), glm::vec3(0.04f, 0.4f, 0.04f)), darkTex, glm::vec2(1.0f, 1.0f) },
+        { boxModel(glm::vec3(1.3f, 0.2f, -0.8f), glm::vec3(0.04f, 0.4f, 0.04f)), darkTex, glm::vec2(1.0f, 1.0f) },
+        { boxModel(glm::vec3(0.895f, 0.675f, -1.0f), glm::vec3(0.04f, 0.45f, 0.45f)), darkTex, glm::vec2(1.0f, 1.0f) }
     };
 
     glm::vec3 lightPos(0.0f, H - 0.2f, 0.0f);
