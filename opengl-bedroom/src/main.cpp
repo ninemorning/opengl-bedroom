@@ -87,22 +87,27 @@ unsigned int loadTexture(const char* path)
     return tex;
 }
 
-unsigned int createQuad()
+unsigned int makeColorTexture(unsigned char r, unsigned char g, unsigned char b)
 {
-    float vertices[] = {
-        -0.5f, 0.0f, -0.5f,  0.0f, 1.0f, 0.0f,  0.0f, 0.0f,
-         0.5f, 0.0f, -0.5f,  0.0f, 1.0f, 0.0f,  1.0f, 0.0f,
-         0.5f, 0.0f,  0.5f,  0.0f, 1.0f, 0.0f,  1.0f, 1.0f,
-         0.5f, 0.0f,  0.5f,  0.0f, 1.0f, 0.0f,  1.0f, 1.0f,
-        -0.5f, 0.0f,  0.5f,  0.0f, 1.0f, 0.0f,  0.0f, 1.0f,
-        -0.5f, 0.0f, -0.5f,  0.0f, 1.0f, 0.0f,  0.0f, 0.0f
-    };
+    unsigned int tex;
+    glGenTextures(1, &tex);
+    glBindTexture(GL_TEXTURE_2D, tex);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    unsigned char c[3] = { r, g, b };
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 1, 1, 0, GL_RGB, GL_UNSIGNED_BYTE, c);
+    return tex;
+}
+
+unsigned int createVAO(const float* vertices, size_t size)
+{
     unsigned int vao, vbo;
     glGenVertexArrays(1, &vao);
     glGenBuffers(1, &vbo);
     glBindVertexArray(vao);
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, size, vertices, GL_STATIC_DRAW);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
@@ -113,6 +118,67 @@ unsigned int createQuad()
     return vao;
 }
 
+unsigned int createQuad()
+{
+    float vertices[] = {
+        -0.5f, 0.0f, -0.5f,  0.0f, 1.0f, 0.0f,  0.0f, 0.0f,
+         0.5f, 0.0f, -0.5f,  0.0f, 1.0f, 0.0f,  1.0f, 0.0f,
+         0.5f, 0.0f,  0.5f,  0.0f, 1.0f, 0.0f,  1.0f, 1.0f,
+         0.5f, 0.0f,  0.5f,  0.0f, 1.0f, 0.0f,  1.0f, 1.0f,
+        -0.5f, 0.0f,  0.5f,  0.0f, 1.0f, 0.0f,  0.0f, 1.0f,
+        -0.5f, 0.0f, -0.5f,  0.0f, 1.0f, 0.0f,  0.0f, 0.0f
+    };
+    return createVAO(vertices, sizeof(vertices));
+}
+
+unsigned int createCube()
+{
+    float vertices[] = {
+        -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  0.0f, 0.0f,
+         0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  1.0f, 0.0f,
+         0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  1.0f, 1.0f,
+         0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  1.0f, 1.0f,
+        -0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  0.0f, 1.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  0.0f, 0.0f,
+
+        -0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f,  0.0f, 0.0f,
+         0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f,  1.0f, 0.0f,
+         0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f,  1.0f, 1.0f,
+         0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f,  1.0f, 1.0f,
+        -0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f,  0.0f, 1.0f,
+        -0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f,  0.0f, 0.0f,
+
+        -0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,  1.0f, 0.0f,
+        -0.5f,  0.5f, -0.5f, -1.0f,  0.0f,  0.0f,  1.0f, 1.0f,
+        -0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,  0.0f, 1.0f,
+        -0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,  0.0f, 1.0f,
+        -0.5f, -0.5f,  0.5f, -1.0f,  0.0f,  0.0f,  0.0f, 0.0f,
+        -0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,  1.0f, 0.0f,
+
+         0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,  1.0f, 0.0f,
+         0.5f,  0.5f, -0.5f,  1.0f,  0.0f,  0.0f,  1.0f, 1.0f,
+         0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,  0.0f, 1.0f,
+         0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,  0.0f, 1.0f,
+         0.5f, -0.5f,  0.5f,  1.0f,  0.0f,  0.0f,  0.0f, 0.0f,
+         0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,  1.0f, 0.0f,
+
+        -0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,  0.0f, 1.0f,
+         0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,  1.0f, 1.0f,
+         0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,  1.0f, 0.0f,
+         0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,  1.0f, 0.0f,
+        -0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,  0.0f, 0.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,  0.0f, 1.0f,
+
+        -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,  0.0f, 1.0f,
+         0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,  1.0f, 1.0f,
+         0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,  1.0f, 0.0f,
+         0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,  1.0f, 0.0f,
+        -0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,  0.0f, 0.0f,
+        -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,  0.0f, 1.0f
+    };
+    return createVAO(vertices, sizeof(vertices));
+}
+
 glm::mat4 makeModel(glm::vec3 t, float angle, glm::vec3 axis, glm::vec3 s)
 {
     glm::mat4 m(1.0f);
@@ -120,6 +186,26 @@ glm::mat4 makeModel(glm::vec3 t, float angle, glm::vec3 axis, glm::vec3 s)
     m = glm::rotate(m, glm::radians(angle), axis);
     m = glm::scale(m, s);
     return m;
+}
+
+glm::mat4 boxModel(glm::vec3 center, glm::vec3 size)
+{
+    glm::mat4 m(1.0f);
+    m = glm::translate(m, center);
+    m = glm::scale(m, size);
+    return m;
+}
+
+void drawSurfaces(const Shader& shader, unsigned int vao, int vertexCount, const std::vector<Surface>& surfaces)
+{
+    glBindVertexArray(vao);
+    for (const Surface& s : surfaces)
+    {
+        shader.setMat4("model", s.model);
+        shader.setVec2("uvScale", s.uvScale);
+        glBindTexture(GL_TEXTURE_2D, s.texture);
+        glDrawArrays(GL_TRIANGLES, 0, vertexCount);
+    }
 }
 
 int main()
@@ -152,8 +238,12 @@ int main()
 
     Shader shader("shaders/basic.vert", "shaders/basic.frag");
     unsigned int quad = createQuad();
+    unsigned int cube = createCube();
+
     unsigned int floorTex = loadTexture("assets/textures/floor.jpg");
     unsigned int wallTex = loadTexture("assets/textures/wall.jpg");
+    unsigned int whiteTex = makeColorTexture(235, 235, 230);
+    unsigned int blueTex = makeColorTexture(90, 120, 170);
 
     const float W = ROOM_W, H = ROOM_H, D = ROOM_D;
     std::vector<Surface> room = {
@@ -163,6 +253,13 @@ int main()
         { makeModel(glm::vec3(0.0f, H / 2, D / 2), -90.0f, glm::vec3(1, 0, 0), glm::vec3(W, 1, H)), wallTex, glm::vec2(W, H) },
         { makeModel(glm::vec3(-W / 2, H / 2, 0.0f), -90.0f, glm::vec3(0, 0, 1), glm::vec3(H, 1, D)), wallTex, glm::vec2(H, D) },
         { makeModel(glm::vec3(W / 2, H / 2, 0.0f), 90.0f, glm::vec3(0, 0, 1), glm::vec3(H, 1, D)), wallTex, glm::vec2(H, D) }
+    };
+
+    std::vector<Surface> furniture = {
+        { boxModel(glm::vec3(-1.4f, 0.175f, -1.0f), glm::vec3(1.2f, 0.35f, 2.0f)), floorTex, glm::vec2(1.0f, 1.0f) },
+        { boxModel(glm::vec3(-1.4f, 0.45f, -0.95f), glm::vec3(1.1f, 0.2f, 1.85f)), blueTex, glm::vec2(1.0f, 1.0f) },
+        { boxModel(glm::vec3(-1.4f, 0.61f, -1.7f), glm::vec3(0.8f, 0.12f, 0.35f)), whiteTex, glm::vec2(1.0f, 1.0f) },
+        { boxModel(glm::vec3(-1.4f, 0.5f, -1.96f), glm::vec3(1.2f, 1.0f, 0.08f)), floorTex, glm::vec2(1.0f, 1.0f) }
     };
 
     glm::vec3 lightPos(0.0f, H - 0.2f, 0.0f);
@@ -194,16 +291,10 @@ int main()
         shader.setVec3("lightPos", lightPos);
         shader.setVec3("lightColor", lightColor);
         shader.setInt("tex", 0);
-
-        glBindVertexArray(quad);
         glActiveTexture(GL_TEXTURE0);
-        for (const Surface& s : room)
-        {
-            shader.setMat4("model", s.model);
-            shader.setVec2("uvScale", s.uvScale);
-            glBindTexture(GL_TEXTURE_2D, s.texture);
-            glDrawArrays(GL_TRIANGLES, 0, 6);
-        }
+
+        drawSurfaces(shader, quad, 6, room);
+        drawSurfaces(shader, cube, 36, furniture);
 
         glfwSwapBuffers(window);
         glfwPollEvents();
