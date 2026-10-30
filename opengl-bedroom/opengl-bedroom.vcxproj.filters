@@ -37,5 +37,11 @@
     <None Include="shaders\basic.frag">
       <Filter>资源文件</Filter>
     </None>
+    <None Include="shaders\flame.vert">
+      <Filter>资源文件</Filter>
+    </None>
+    <None Include="shaders\flame.frag">
+      <Filter>资源文件</Filter>
+    </None>
   </ItemGroup>
 </Project>
