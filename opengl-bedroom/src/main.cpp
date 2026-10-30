@@ -5,6 +5,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <vector>
+#include <random>
 #include <cmath>
 #include <iostream>
 #include "Shader.h"
@@ -14,6 +15,8 @@ const float ROOM_W = 7.0f;
 const float ROOM_H = 3.0f;
 const float ROOM_D = 5.5f;
 const float WALL_TILE = 0.5f;
+const int SNOW_COUNT = 4000;
+const float SNOW_HEIGHT = 8.0f;
 
 Camera camera(glm::vec3(-1.0f, 1.6f, 0.8f));
 float lastX = 640.0f;
@@ -228,6 +231,40 @@ unsigned int createBillboard()
     return vao;
 }
 
+unsigned int createSnow(int count)
+{
+    std::mt19937 rng(42);
+    std::uniform_real_distribution<float> distX(-10.0f, 10.0f);
+    std::uniform_real_distribution<float> distY(0.0f, SNOW_HEIGHT);
+    std::uniform_real_distribution<float> distZ(-15.0f, -3.0f);
+    std::uniform_real_distribution<float> distSpeed(0.4f, 1.0f);
+    std::uniform_real_distribution<float> distPhase(0.0f, 6.2832f);
+
+    std::vector<float> data;
+    data.reserve(count * 5);
+    for (int i = 0; i < count; i++)
+    {
+        data.push_back(distX(rng));
+        data.push_back(distY(rng));
+        data.push_back(distZ(rng));
+        data.push_back(distSpeed(rng));
+        data.push_back(distPhase(rng));
+    }
+
+    unsigned int vao, vbo;
+    glGenVertexArrays(1, &vao);
+    glGenBuffers(1, &vbo);
+    glBindVertexArray(vao);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glBufferData(GL_ARRAY_BUFFER, data.size() * sizeof(float), data.data(), GL_STATIC_DRAW);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+    glEnableVertexAttribArray(1);
+    glBindVertexArray(0);
+    return vao;
+}
+
 glm::mat4 makeModel(glm::vec3 t, float angle, glm::vec3 axis, glm::vec3 s)
 {
     glm::mat4 m(1.0f);
@@ -300,13 +337,16 @@ int main()
     }
 
     glEnable(GL_DEPTH_TEST);
+    glEnable(GL_PROGRAM_POINT_SIZE);
     stbi_set_flip_vertically_on_load(true);
 
     Shader shader("shaders/basic.vert", "shaders/basic.frag");
     Shader flameShader("shaders/flame.vert", "shaders/flame.frag");
+    Shader snowShader("shaders/snow.vert", "shaders/snow.frag");
     unsigned int quad = createQuad();
     unsigned int cube = createCube();
     unsigned int billboard = createBillboard();
+    unsigned int snow = createSnow(SNOW_COUNT);
 
     unsigned int floorTex = loadTexture("assets/textures/floor.jpg");
     unsigned int wallTex = loadTexture("assets/textures/wall.jpg");
@@ -487,6 +527,17 @@ int main()
 
         glEnable(GL_BLEND);
         glDepthMask(GL_FALSE);
+
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        snowShader.use();
+        snowShader.setMat4("projection", projection);
+        snowShader.setMat4("view", view);
+        snowShader.setFloat("time", now);
+        snowShader.setFloat("baseY", 0.0f);
+        snowShader.setFloat("height", SNOW_HEIGHT);
+        snowShader.setFloat("pointScale", projection[1][1] * fbH * 0.5f);
+        glBindVertexArray(snow);
+        glDrawArrays(GL_POINTS, 0, SNOW_COUNT);
 
         glBlendFunc(GL_ONE, GL_ONE);
         flameShader.use();

@@ -157,6 +157,8 @@
     <None Include="shaders\basic.vert" />
     <None Include="shaders\flame.frag" />
     <None Include="shaders\flame.vert" />
+    <None Include="shaders\snow.frag" />
+    <None Include="shaders\snow.vert" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
