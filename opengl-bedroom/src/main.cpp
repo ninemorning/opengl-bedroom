@@ -10,6 +10,7 @@
 #include <iostream>
 #include "Shader.h"
 #include "Camera.h"
+#include "Model.h"
 
 const float ROOM_W = 7.0f;
 const float ROOM_H = 3.0f;
@@ -360,6 +361,10 @@ int main()
     unsigned int blackTex = makeColorTexture(0, 0, 0);
     unsigned int bulbTex = makeColorTexture(255, 240, 200);
 
+    Model tree;
+    tree.load("assets/models/christmas_tree/obj.obj");
+    tree.setEmissive("Mi_161", glm::vec3(1.2f, 0.9f, 0.4f));
+
     const float W = ROOM_W, H = ROOM_H, D = ROOM_D;
     const float winX0 = -1.3f, winX1 = 2.3f, winY0 = 0.9f, winY1 = 2.4f;
 
@@ -523,6 +528,7 @@ int main()
         drawSurfaces(shader, quad, 6, outside);
         drawSurfaces(shader, quad, 6, room);
         drawSurfaces(shader, cube, 36, furniture);
+        tree.draw(shader, makeModel(glm::vec3(2.5f, 0.0f, 1.9f), 0.0f, glm::vec3(0, 1, 0), glm::vec3(0.22f)));
         drawSurfaces(shader, cube, 36, glows);
 
         glEnable(GL_BLEND);
