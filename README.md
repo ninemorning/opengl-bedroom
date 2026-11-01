@@ -1,15 +1,20 @@
-# OpenGL Bedroom
+# OpenGL Snow Cabin
 
 한양대학교 ERICA 컴퓨터그래픽스 팀ONE 프로젝트
 
-OpenGL로 작은 침실을 렌더링하고, 1인칭 시점으로 방 안을 돌아다니며 조명을 조작할 수 있는 프로젝트입니다.
+OpenGL로 눈 내리는 밤의 크리스마스 통나무집을 렌더링하고, 1인칭 시점으로 집 안을 돌아다니며 조명을 조작할 수 있는 프로젝트입니다. 창밖에는 눈이 내리고, 실내에는 벽난로 불꽃과 크리스마스 트리가 있습니다.
 
 ## 주요 기능
 
-- 1인칭 카메라 이동 (WASD + 마우스)
-- 바닥 / 벽 텍스처 매핑
-- Phong 조명 (천장 조명 + 스탠드 조명)
-- 침대, 책상, 의자, 스탠드
+- 1인칭 카메라 이동 (WASD + 마우스), 방 경계 제한
+- 바닥 / 벽 / 석재 텍스처 매핑
+- 다중 점광원 조명 (천장 조명 + 스탠드 조명 + 벽난로 불빛, 불빛은 시간에 따라 깜빡임)
+- 벽난로 불꽃: 노이즈 기반 프래그먼트 셰이더 + 가산 혼합(additive blending)
+- 창밖에 내리는 눈: 4,000개 파티클, 위치를 버텍스 셰이더에서 실시간 계산
+- 반투명 창문 유리
+- 침대, 소파, 러그와 테이블, 책상, 의자, 스탠드, 옷장, 문
+- OBJ / MTL 모델 로더 (src/Model.h): 재질별로 메시를 나누어 렌더링
+- 크리스마스 트리 (외부 OBJ 모델, 약 23만 삼각형, 15개 재질)
 - 키보드로 조명 On / Off
 
 ## 조작 방법
@@ -40,14 +45,25 @@ OpenGL로 작은 침실을 렌더링하고, 1인칭 시점으로 방 안을 돌�
 라이브러리 경로는 `$(ProjectDir)` 기준 상대 경로로 설정되어 있어 별도 설정 없이 빌드됩니다.
 셰이더와 텍스처는 프로젝트 폴더 기준 상대 경로로 불러오므로 Visual Studio에서 실행해야 합니다.
 
+## 진행 상황
+
+완료: 카메라, 다중 조명, 텍스처, 가구, 창문, 벽난로 불꽃, 눈 파티클, OBJ 모델 로더, 크리스마스 트리
+
+진행 중: 충돌 감지 (가구 통과 방지)
+
+예정: 트리 장식 조명(컬러 점광원), 선물 상자, 추가 모델(눈사람), 그림자(시간이 허락하면)
+
 ## 폴더 구조
 opengl-bedroom/
-├─ src/ main.cpp, Shader.h, Camera.h, glad.c
-├─ shaders/ basic.vert, basic.frag
-├─ assets/ textures/
-├─ include/ GLFW, glad, KHR, glm, stb_image.h
-└─ lib/ glfw3.lib
+├─ src/       main.cpp, Shader.h, Camera.h, Model.h, glad.c
+├─ shaders/   basic.vert, basic.frag, flame.vert, flame.frag, snow.vert, snow.frag
+├─ assets/
+│  ├─ textures/
+│  └─ models/christmas_tree/   obj.obj, obj.mtl, 그라디언트 텍스처 3장
+├─ include/   GLFW, glad, KHR, glm, stb_image.h
+└─ lib/       glfw3.lib
 
 ## 에셋 출처
 
 - 바닥 / 벽 텍스처: [Poly Haven](https://polyhaven.com) (CC0)
+- 크리스마스 트리 모델: "Christmas tree stylized low-poly free", 제작자: [CGTrader 페이지의 판매자 이름 확인 후 작 성], CGTrader, 라이선스: CGTrader Royalty Free License (no AI)
