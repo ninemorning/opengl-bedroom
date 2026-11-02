@@ -426,3 +426,6 @@ FodyWeavers.xsd
 
 # Official VS Code C# Dev Kit Extension exclusion
 #*.lscache
+
+# Keep 3D model files in assets
+!opengl-bedroom/assets/models/**/*.obj

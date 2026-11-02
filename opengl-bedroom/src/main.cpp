@@ -18,6 +18,7 @@ const float ROOM_D = 5.5f;
 const float WALL_TILE = 0.5f;
 const int SNOW_COUNT = 4000;
 const float SNOW_HEIGHT = 8.0f;
+const float FURNITURE_SCALE = 1.8f;
 
 Camera camera(glm::vec3(-1.0f, 1.6f, 0.8f));
 float lastX = 640.0f;
@@ -43,6 +44,14 @@ struct Flame
     glm::vec3 center;
     glm::vec2 size;
     float seed;
+};
+
+struct Prop
+{
+    Model* model;
+    glm::vec3 pos;
+    float yaw;
+    float scale = FURNITURE_SCALE;
 };
 
 void framebufferSizeCallback(GLFWwindow* window, int width, int height)
@@ -283,6 +292,17 @@ glm::mat4 boxModel(glm::vec3 center, glm::vec3 size)
     return m;
 }
 
+glm::mat4 placeModel(const Model& m, glm::vec3 pos, float yaw, float scale)
+{
+    glm::vec3 pivot((m.boundsMin.x + m.boundsMax.x) / 2, m.boundsMin.y, (m.boundsMin.z + m.boundsMax.z) / 2);
+    glm::mat4 t(1.0f);
+    t = glm::translate(t, pos);
+    t = glm::rotate(t, glm::radians(yaw), glm::vec3(0, 1, 0));
+    t = glm::scale(t, glm::vec3(scale));
+    t = glm::translate(t, -pivot);
+    return t;
+}
+
 Surface box(glm::vec3 center, glm::vec3 size, unsigned int tex)
 {
     return Surface{ boxModel(center, size), tex };
@@ -352,20 +372,51 @@ int main()
     unsigned int floorTex = loadTexture("assets/textures/floor.jpg");
     unsigned int wallTex = loadTexture("assets/textures/wall.jpg");
     unsigned int stoneTex = loadTexture("assets/textures/stone.jpg");
-    unsigned int whiteTex = makeColorTexture(235, 235, 230);
     unsigned int creamTex = makeColorTexture(230, 220, 200);
-    unsigned int redTex = makeColorTexture(150, 35, 35);
     unsigned int darkTex = makeColorTexture(60, 60, 65);
     unsigned int sootTex = makeColorTexture(20, 15, 12);
-    unsigned int rugTex = makeColorTexture(210, 190, 165);
     unsigned int blackTex = makeColorTexture(0, 0, 0);
-    unsigned int bulbTex = makeColorTexture(255, 240, 200);
 
     Model tree;
     tree.load("assets/models/christmas_tree/obj.obj");
     tree.setEmissive("Mi_161", glm::vec3(1.2f, 0.9f, 0.4f));
 
+    Model bed, nightstand, sofa, rug, coffeeTable, ceilingLamp, desk, chair, deskLamp, books, bookcase, plant;
+    bed.load("assets/models/furniture/bedDouble.obj");
+    nightstand.load("assets/models/furniture/cabinetBedDrawerTable.obj");
+    sofa.load("assets/models/furniture/loungeSofa.obj");
+    rug.load("assets/models/furniture/rugRectangle.obj");
+    coffeeTable.load("assets/models/furniture/tableCoffee.obj");
+    ceilingLamp.load("assets/models/furniture/lampSquareCeiling.obj");
+    desk.load("assets/models/furniture/desk.obj");
+    chair.load("assets/models/furniture/chairDesk.obj");
+    deskLamp.load("assets/models/furniture/lampSquareTable.obj");
+    books.load("assets/models/furniture/books.obj");
+    bookcase.load("assets/models/furniture/bookcaseClosedWide.obj");
+    plant.load("assets/models/furniture/pottedPlant.obj");
+
     const float W = ROOM_W, H = ROOM_H, D = ROOM_D;
+    const float K = FURNITURE_SCALE;
+    const float lampScale = 3.0f;
+    const float rugTop = rug.size().y * K;
+    const float deskTop = desk.size().y * K;
+    const float standTop = nightstand.size().y * K;
+    const glm::vec3 standPos(-1.44f, 0.0f, -2.52f);
+
+    std::vector<Prop> props = {
+        { &bed, glm::vec3(-2.6f, 0.0f, -1.71f), 180.0f },
+        { &nightstand, standPos, 180.0f },
+        { &sofa, glm::vec3(0.5f, 0.0f, -2.0f), 180.0f },
+        { &rug, glm::vec3(0.5f, 0.0f, -0.6f), 0.0f },
+        { &coffeeTable, glm::vec3(0.5f, rugTop, -0.6f), 0.0f },
+        { &ceilingLamp, glm::vec3(0.5f, H - ceilingLamp.size().y * lampScale, -0.6f), 0.0f, lampScale },
+        { &desk, glm::vec3(0.6f, 0.0f, 1.5f), 180.0f },
+        { &chair, glm::vec3(0.6f, 0.0f, 2.1f), 0.0f },
+        { &deskLamp, glm::vec3(1.1f, deskTop, 1.35f), 0.0f },
+        { &books, glm::vec3(0.15f, deskTop, 1.45f), 20.0f },
+        { &bookcase, glm::vec3(-3.25f, 0.0f, 2.0f), -90.0f },
+        { &plant, glm::vec3(1.75f, 0.0f, -2.2f), 0.0f }
+    };
     const float winX0 = -1.3f, winX1 = 2.3f, winY0 = 0.9f, winY1 = 2.4f;
 
     Surface floorS{ makeModel(glm::vec3(0.0f, 0.0f, 0.0f), 0.0f, glm::vec3(1, 0, 0), glm::vec3(W, 1, D)), floorTex, glm::vec2(W, D) * 0.5f };
@@ -389,29 +440,7 @@ int main()
     std::vector<Surface> outside = { ground, sky };
 
     std::vector<Surface> furniture = {
-        box(glm::vec3(-2.65f, 0.175f, -1.7f), glm::vec3(1.6f, 0.35f, 2.1f), floorTex),
-        box(glm::vec3(-2.65f, 0.45f, -1.62f), glm::vec3(1.5f, 0.2f, 1.95f), whiteTex),
-        box(glm::vec3(-2.65f, 0.57f, -1.245f), glm::vec3(1.54f, 0.04f, 1.2f), redTex),
-        box(glm::vec3(-3.0f, 0.62f, -2.4f), glm::vec3(0.6f, 0.14f, 0.35f), whiteTex),
-        box(glm::vec3(-2.3f, 0.62f, -2.4f), glm::vec3(0.6f, 0.14f, 0.35f), whiteTex),
-        box(glm::vec3(-2.65f, 0.55f, -2.71f), glm::vec3(1.6f, 1.1f, 0.08f), floorTex),
-
-        box(glm::vec3(-1.55f, 0.25f, -2.5f), glm::vec3(0.45f, 0.5f, 0.4f), floorTex),
-        box(glm::vec3(-1.55f, 0.55f, -2.5f), glm::vec3(0.06f, 0.1f, 0.06f), creamTex),
-
-        box(glm::vec3(0.5f, 0.21f, -1.85f), glm::vec3(2.0f, 0.42f, 0.85f), creamTex),
-        box(glm::vec3(0.5f, 0.645f, -2.175f), glm::vec3(2.0f, 0.45f, 0.2f), creamTex),
-        box(glm::vec3(-0.4f, 0.3f, -1.85f), glm::vec3(0.2f, 0.6f, 0.85f), creamTex),
-        box(glm::vec3(1.4f, 0.3f, -1.85f), glm::vec3(0.2f, 0.6f, 0.85f), creamTex),
-        box(glm::vec3(0.0f, 0.58f, -2.0f), glm::vec3(0.4f, 0.35f, 0.12f), redTex),
-        box(glm::vec3(1.0f, 0.58f, -2.0f), glm::vec3(0.4f, 0.35f, 0.12f), whiteTex),
-
-        box(glm::vec3(0.5f, 0.005f, -0.6f), glm::vec3(2.6f, 0.01f, 2.0f), rugTex),
-        box(glm::vec3(0.5f, 0.45f, -0.6f), glm::vec3(0.8f, 0.05f, 0.8f), floorTex),
-        box(glm::vec3(0.5f, 0.2f, -0.6f), glm::vec3(0.12f, 0.4f, 0.12f), floorTex),
-
-        box(glm::vec3(0.5f, 2.775f, -0.6f), glm::vec3(0.03f, 0.45f, 0.03f), darkTex),
-        box(glm::vec3(0.5f, 2.46f, -0.6f), glm::vec3(0.55f, 0.18f, 0.55f), creamTex),
+        box(glm::vec3(standPos.x, standTop + 0.05f, standPos.z), glm::vec3(0.06f, 0.1f, 0.06f), creamTex),
 
         box(glm::vec3(winX0 / 2 + winX1 / 2, 0.875f, -2.6f), glm::vec3(3.8f, 0.05f, 0.3f), floorTex),
         box(glm::vec3(winX0, 1.65f, -2.75f), glm::vec3(0.08f, 1.5f, 0.15f), floorTex),
@@ -428,36 +457,15 @@ int main()
         box(glm::vec3(2.6f, 0.27f, -1.15f), glm::vec3(0.12f, 0.1f, 0.6f), floorTex),
         box(glm::vec3(2.6f, 0.27f, -0.85f), glm::vec3(0.12f, 0.1f, 0.6f), floorTex),
 
-        box(glm::vec3(0.6f, 0.73f, 1.5f), glm::vec3(1.4f, 0.04f, 0.65f), floorTex),
-        box(glm::vec3(-0.05f, 0.355f, 1.22f), glm::vec3(0.05f, 0.71f, 0.05f), floorTex),
-        box(glm::vec3(1.25f, 0.355f, 1.22f), glm::vec3(0.05f, 0.71f, 0.05f), floorTex),
-        box(glm::vec3(-0.05f, 0.355f, 1.78f), glm::vec3(0.05f, 0.71f, 0.05f), floorTex),
-        box(glm::vec3(1.25f, 0.355f, 1.78f), glm::vec3(0.05f, 0.71f, 0.05f), floorTex),
-
-        box(glm::vec3(0.6f, 0.425f, 2.1f), glm::vec3(0.45f, 0.05f, 0.45f), floorTex),
-        box(glm::vec3(0.4f, 0.2f, 1.9f), glm::vec3(0.04f, 0.4f, 0.04f), floorTex),
-        box(glm::vec3(0.8f, 0.2f, 1.9f), glm::vec3(0.04f, 0.4f, 0.04f), floorTex),
-        box(glm::vec3(0.4f, 0.2f, 2.3f), glm::vec3(0.04f, 0.4f, 0.04f), floorTex),
-        box(glm::vec3(0.8f, 0.2f, 2.3f), glm::vec3(0.04f, 0.4f, 0.04f), floorTex),
-        box(glm::vec3(0.6f, 0.675f, 2.305f), glm::vec3(0.45f, 0.45f, 0.04f), floorTex),
-
-        box(glm::vec3(1.1f, 0.765f, 1.3f), glm::vec3(0.15f, 0.03f, 0.15f), darkTex),
-        box(glm::vec3(1.1f, 0.955f, 1.3f), glm::vec3(0.025f, 0.35f, 0.025f), darkTex),
-        box(glm::vec3(1.1f, 1.19f, 1.3f), glm::vec3(0.22f, 0.12f, 0.22f), creamTex),
-
-        box(glm::vec3(-3.3f, 0.45f, 2.0f), glm::vec3(0.35f, 0.9f, 1.2f), floorTex),
-
         box(glm::vec3(-1.2f, 1.05f, 2.72f), glm::vec3(0.9f, 2.1f, 0.06f), floorTex),
         box(glm::vec3(-0.85f, 1.0f, 2.68f), glm::vec3(0.04f, 0.04f, 0.06f), darkTex)
     };
 
     std::vector<Surface> glows = {
-        box(glm::vec3(1.1f, 1.11f, 1.3f), glm::vec3(0.08f, 0.06f, 0.08f), bulbTex),
         box(glm::vec3(2.65f, 0.17f, -1.0f), glm::vec3(0.3f, 0.1f, 0.6f), blackTex),
-        box(glm::vec3(-1.55f, 0.625f, -2.5f), glm::vec3(0.03f, 0.05f, 0.03f), blackTex),
-        box(glm::vec3(0.5f, 2.345f, -0.6f), glm::vec3(0.2f, 0.05f, 0.2f), bulbTex)
+        box(glm::vec3(standPos.x, standTop + 0.125f, standPos.z), glm::vec3(0.03f, 0.05f, 0.03f), blackTex)
     };
-    glows[2].emissive = glm::vec3(2.0f, 1.3f, 0.5f);
+    glows[1].emissive = glm::vec3(2.0f, 1.3f, 0.5f);
 
     std::vector<Flame> flames = {
         { glm::vec3(2.62f, 0.3f, -1.2f), glm::vec2(0.28f, 0.45f), 0.0f },
@@ -471,13 +479,13 @@ int main()
     glass.emissive = glm::vec3(0.02f, 0.03f, 0.06f);
     std::vector<Surface> glassList = { glass };
 
-    glm::vec3 ceilingPos(0.5f, 2.25f, -0.6f);
+    glm::vec3 ceilingPos(0.5f, 2.3f, -0.6f);
     glm::vec3 ceilingColor(1.0f, 0.88f, 0.7f);
-    glm::vec3 lampPos(1.1f, 1.05f, 1.3f);
+    glm::vec3 lampPos(1.1f, deskTop + 0.4f, 1.35f);
     glm::vec3 lampColor(1.0f, 0.75f, 0.45f);
     glm::vec3 firePos(2.45f, 0.55f, -1.0f);
     glm::vec3 fireColor(1.0f, 0.5f, 0.18f);
-    glm::vec3 bulbGlow(2.5f, 2.1f, 1.4f);
+    glm::vec3 shadeGlow(1.0f, 0.85f, 0.55f);
 
     float lastFrame = 0.0f;
     while (!glfwWindowShouldClose(window))
@@ -496,9 +504,9 @@ int main()
         }
 
         float flicker = 0.35f * std::sin(now * 7.3f) + 0.2f * std::sin(now * 13.1f + 1.3f) + 0.1f * std::sin(now * 23.7f);
-        glows[0].emissive = lampOn ? bulbGlow : glm::vec3(0.0f);
-        glows[1].emissive = fireColor * (2.0f + 0.5f * flicker);
-        glows[3].emissive = ceilingOn ? bulbGlow : glm::vec3(0.0f);
+        glows[0].emissive = fireColor * (2.0f + 0.5f * flicker);
+        deskLamp.setEmissive("lamp", lampOn ? shadeGlow : glm::vec3(0.0f));
+        ceilingLamp.setEmissive("lamp", ceilingOn ? shadeGlow : glm::vec3(0.0f));
 
         glm::mat4 projection = glm::perspective(glm::radians(camera.fov), (float)fbW / fbH, 0.1f, 100.0f);
         glm::mat4 view = camera.view();
@@ -528,6 +536,8 @@ int main()
         drawSurfaces(shader, quad, 6, outside);
         drawSurfaces(shader, quad, 6, room);
         drawSurfaces(shader, cube, 36, furniture);
+        for (const Prop& p : props)
+            p.model->draw(shader, placeModel(*p.model, p.pos, p.yaw, p.scale));
         tree.draw(shader, makeModel(glm::vec3(2.5f, 0.0f, 1.9f), 0.0f, glm::vec3(0, 1, 0), glm::vec3(0.22f)));
         drawSurfaces(shader, cube, 36, glows);
 

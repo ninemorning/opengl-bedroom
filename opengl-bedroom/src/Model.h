@@ -18,6 +18,8 @@ struct ObjData
     std::string mtlFile;                          // file name given by mtllib in the obj
     std::vector<std::string> materialNames;       // material names (same order as vertices)
     std::vector<std::vector<float>> vertices;     // one array per material: pos3 + normal3 + uv2
+    glm::vec3 boundsMin = glm::vec3(1e30f);
+    glm::vec3 boundsMax = glm::vec3(-1e30f);
 };
 
 struct MtlInfo
@@ -135,6 +137,8 @@ inline bool parseObj(const std::string& path, ObjData& out)
             float y = std::strtof(e, &e);
             float z = std::strtof(e, &e);
             pos.emplace_back(x, y, z);
+            out.boundsMin = glm::min(out.boundsMin, pos.back());
+            out.boundsMax = glm::max(out.boundsMax, pos.back());
         }
         else if (line[0] == 'v' && line[1] == 't' && line[2] == ' ')
         {
@@ -245,6 +249,10 @@ public:
     };
 
     std::vector<Part> parts;
+    glm::vec3 boundsMin = glm::vec3(0.0f);
+    glm::vec3 boundsMax = glm::vec3(0.0f);
+
+    glm::vec3 size() const { return boundsMax - boundsMin; }
 
     // objPath example: "assets/models/christmas_tree/obj.obj"
     // the mtl and textures are expected in the same folder as the obj
@@ -256,6 +264,8 @@ public:
 
         ObjData data;
         if (!parseObj(objPath, data)) return false;
+        boundsMin = data.boundsMin;
+        boundsMax = data.boundsMax;
 
         std::map<std::string, MtlInfo> mtl;
         if (!data.mtlFile.empty()) mtl = parseMtl(dir + data.mtlFile);
