@@ -66,4 +66,4 @@ opengl-bedroom/
 ## 에셋 출처
 
 - 바닥 / 벽 텍스처: [Poly Haven](https://polyhaven.com) (CC0)
-- 크리스마스 트리 모델: "Christmas tree stylized low-poly free", 제작자: [CGTrader 페이지의 판매자 이름 확인 후 작 성], CGTrader, 라이선스: CGTrader Royalty Free License (no AI)
+- 크리스마스 트리 모델: "Christmas tree stylized low-poly free", 제작자: [ogilko], CGTrader, 라이선스: CGTrader Royalty Free License (no AI)
