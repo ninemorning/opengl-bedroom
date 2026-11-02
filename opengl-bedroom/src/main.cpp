@@ -62,6 +62,30 @@ struct Prop
     float scale = FURNITURE_SCALE;
 };
 
+struct AABB
+{
+    glm::vec3 min;
+    glm::vec3 max;
+
+    bool check(glm::vec3 pos, float r = 0.3f) const
+    {
+        return (pos.x + r >= min.x && pos.x - r <= max.x &&
+            pos.y + r >= min.y && pos.y - r <= max.y &&
+            pos.z + r >= min.z && pos.z - r <= max.z);
+    }
+};
+
+std::vector<AABB> colliders = {
+    { glm::vec3(-ROOM_W / 2, 0, -ROOM_D / 2), glm::vec3(-ROOM_W / 2 + 0.2f, ROOM_H, ROOM_D / 2) },
+    { glm::vec3(ROOM_W / 2 - 0.2f, 0, -ROOM_D / 2), glm::vec3(ROOM_W / 2, ROOM_H, ROOM_D / 2) },
+    { glm::vec3(-ROOM_W / 2, 0, ROOM_D / 2 - 0.2f), glm::vec3(ROOM_W / 2, ROOM_H, ROOM_D / 2) },
+    { glm::vec3(-ROOM_W / 2, 0, -ROOM_D / 2), glm::vec3(ROOM_W / 2, ROOM_H, -ROOM_D / 2 + 0.2f) },
+    { glm::vec3(-3.2f, 0, -2.3f), glm::vec3(-2.0f, 2.0f, -1.1f) },
+    { glm::vec3(-0.2f, 0, -2.5f), glm::vec3(1.2f, 1.5f, -1.5f) },
+    { glm::vec3(0.0f, 0, 1.0f), glm::vec3(1.2f, 1.5f, 2.0f) },
+    { glm::vec3(2.3f, 0, -1.8f), glm::vec3(3.5f, 3.0f, -0.2f) }
+};
+
 void framebufferSizeCallback(GLFWwindow* window, int width, int height)
 {
     glViewport(0, 0, width, height);
@@ -98,7 +122,7 @@ void processInput(GLFWwindow* window, float dt)
     if (keyPressedOnce(window, GLFW_KEY_E, eWasDown))
     {
         glm::vec3 doorPos(-1.2f, 1.0f, 2.72f);
-        if (glm::distance(camera.position, doorPos) < 2.5f)
+        if (glm::distance(camera.position, doorPos) < 3.0f)
         {
             doorOpen = !doorOpen;
         }
@@ -109,19 +133,25 @@ void processInput(GLFWwindow* window, float dt)
         glm::vec3 bedPos(-2.6f, 1.2f, -1.71f);
         glm::vec3 sofaPos(0.5f, 1.0f, -2.0f);
         glm::vec3 snowmanPos(0.8f, 1.0f, 4.5f);
+        glm::vec3 deskLampPos(1.1f, 1.5f, 1.35f);
 
         float distBed = glm::distance(camera.position, bedPos);
         float distSofa = glm::distance(camera.position, sofaPos);
         float distSnowman = glm::distance(camera.position, snowmanPos);
+        float distLamp = glm::distance(camera.position, deskLampPos);
 
-        if (distBed < 2.8f)
+        if (distLamp < 2.0f)
+        {
+            lampOn = !lampOn;
+        }
+        else if (distBed < 2.5f)
         {
             inBed = !inBed;
             onSofa = false;
             if (inBed) camera.position = glm::vec3(-2.6f, 1.25f, -1.71f);
             else camera.position = glm::vec3(-1.5f, 1.6f, -1.0f);
         }
-        else if (distSofa < 2.5f)
+        else if (distSofa < 2.2f)
         {
             onSofa = !onSofa;
             inBed = false;
@@ -140,26 +170,32 @@ void processInput(GLFWwindow* window, float dt)
 
     if (inBed || onSofa) return;
 
+    glm::vec3 oldPos = camera.position;
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) camera.move(Move::Forward, dt);
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) camera.move(Move::Backward, dt);
     if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) camera.move(Move::Left, dt);
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) camera.move(Move::Right, dt);
 
-    if (keyPressedOnce(window, GLFW_KEY_L, lWasDown)) lampOn = !lampOn;
-    if (keyPressedOnce(window, GLFW_KEY_K, kWasDown)) ceilingOn = !ceilingOn;
-
     bool nearDoor = (camera.position.z > 2.2f && camera.position.x > -2.2f && camera.position.x < 0.2f);
     if (!doorOpen && !nearDoor)
     {
-        float margin = 0.3f;
-        camera.position.x = glm::clamp(camera.position.x, -ROOM_W / 2 + margin, ROOM_W / 2 - margin);
-        camera.position.z = glm::clamp(camera.position.z, -ROOM_D / 2 + margin, ROOM_D / 2 - margin);
+        for (const auto& box : colliders)
+        {
+            if (box.check(camera.position))
+            {
+                camera.position = oldPos;
+                break;
+            }
+        }
     }
     else if (doorOpen)
     {
         camera.position.x = glm::clamp(camera.position.x, -12.0f, 12.0f);
         camera.position.z = glm::clamp(camera.position.z, -10.0f, 6.0f);
     }
+
+    if (keyPressedOnce(window, GLFW_KEY_L, lWasDown)) lampOn = !lampOn;
+    if (keyPressedOnce(window, GLFW_KEY_K, kWasDown)) ceilingOn = !ceilingOn;
 }
 
 unsigned int loadTexture(const char* path)
@@ -182,7 +218,6 @@ unsigned int loadTexture(const char* path)
     }
     else
     {
-        std::cout << "Failed to load texture: " << path << std::endl;
         unsigned char gray[3] = { 180, 180, 180 };
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 1, 1, 0, GL_RGB, GL_UNSIGNED_BYTE, gray);
     }
@@ -309,7 +344,7 @@ unsigned int createSnow(int count)
     std::mt19937 rng(42);
     std::uniform_real_distribution<float> distX(-15.0f, 15.0f);
     std::uniform_real_distribution<float> distY(0.0f, SNOW_HEIGHT);
-    std::uniform_real_distribution<float> distZ(-20.0f, 10.0f);
+    std::uniform_real_distribution<float> distZ(-25.0f, -3.0f);
     std::uniform_real_distribution<float> distSpeed(0.4f, 1.0f);
     std::uniform_real_distribution<float> distPhase(0.0f, 6.2832f);
 
@@ -402,7 +437,7 @@ int main()
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-    GLFWwindow* window = glfwCreateWindow(1280, 720, "Snow Cabin - Open World Edition", nullptr, nullptr);
+    GLFWwindow* window = glfwCreateWindow(1280, 720, "Snow Cabin - Advanced Edition", nullptr, nullptr);
     if (!window)
     {
         std::cout << "Failed to create window" << std::endl;
@@ -458,6 +493,7 @@ int main()
     unsigned int pineGreenTex = makeColorTexture(20, 50, 32);
     unsigned int woodDoorTex = makeColorTexture(110, 65, 35);
     unsigned int brassKnobTex = makeColorTexture(200, 175, 80);
+    unsigned int paintingTex = makeColorTexture(180, 150, 110);
 
     Model tree;
     tree.load("assets/models/christmas_tree/obj.obj");
@@ -517,7 +553,7 @@ int main()
 
     Surface ground{ makeModel(glm::vec3(0.0f, -0.02f, 0.0f), 0.0f, glm::vec3(1, 0, 0), glm::vec3(40.0f, 1.0f, 40.0f)), blackTex };
     ground.emissive = glm::vec3(0.38f, 0.45f, 0.60f);
-    Surface sky{ makeModel(glm::vec3(0.0f, 10.0f, 0.0f), 90.0f, glm::vec3(1, 0, 0), glm::vec3(50.0f, 1.0f, 50.0f)), blackTex };
+    Surface sky{ makeModel(glm::vec3(0.0f, 8.0f, -15.0f), 90.0f, glm::vec3(1, 0, 0), glm::vec3(50.0f, 1.0f, 20.0f)), blackTex };
     sky.emissive = glm::vec3(0.02f, 0.04f, 0.12f);
 
     std::vector<Surface> outside = {
@@ -566,7 +602,9 @@ int main()
         box(glm::vec3(2.62f, 1.2f, -1.0f), glm::vec3(0.35f, 0.08f, 2.0f), floorTex),
         box(glm::vec3(2.6f, 0.27f, -1.15f), glm::vec3(0.12f, 0.1f, 0.6f), floorTex),
         box(glm::vec3(2.6f, 0.27f, -0.85f), glm::vec3(0.12f, 0.1f, 0.6f), floorTex),
-        box(glm::vec3(-0.85f, 1.0f, 2.68f), glm::vec3(0.04f, 0.04f, 0.06f), darkTex)
+        box(glm::vec3(-0.85f, 1.0f, 2.68f), glm::vec3(0.04f, 0.04f, 0.06f), darkTex),
+
+        box(glm::vec3(-3.47f, 1.8f, 0.0f), glm::vec3(0.04f, 0.9f, 1.2f), paintingTex)
     };
 
     std::vector<Surface> giftBoxes = {
@@ -658,6 +696,24 @@ int main()
         shader.setVec3("lightPos[2]", firePos);
         shader.setVec3("lightColor[2]", fireColor);
         shader.setFloat("lightIntensity[2]", 1.4f + flicker);
+
+        for (int i = 0; i < 4; i++)
+        {
+            float phase = now * 3.0f + i * 1.57f;
+            glm::vec3 treeLightColor = glm::vec3(
+                0.5f + 0.5f * std::sin(phase),
+                0.5f + 0.5f * std::sin(phase + 2.09f),
+                0.5f + 0.5f * std::sin(phase + 4.18f)
+            );
+            std::string posName = "lightPos[" + std::to_string(3 + i) + "]";
+            std::string colName = "lightColor[" + std::to_string(3 + i) + "]";
+            std::string intName = "lightIntensity[" + std::to_string(3 + i) + "]";
+
+            shader.setVec3(posName.c_str(), glm::vec3(2.5f + (i % 2) * 0.4f - 0.2f, 1.0f + i * 0.3f, 1.9f + (i / 2) * 0.4f - 0.2f));
+            shader.setVec3(colName.c_str(), treeLightColor);
+            shader.setFloat(intName.c_str(), 0.8f);
+        }
+
         shader.setFloat("ambient", ceilingOn ? 0.15f : 0.04f);
         shader.setFloat("exposure", 1.1f);
         shader.setFloat("alpha", 1.0f);
