@@ -16,7 +16,7 @@ const float ROOM_W = 7.0f;
 const float ROOM_H = 3.0f;
 const float ROOM_D = 5.5f;
 const float WALL_TILE = 0.5f;
-const int SNOW_COUNT = 4000;
+const int SNOW_COUNT = 5000;
 const float SNOW_HEIGHT = 8.0f;
 const float FURNITURE_SCALE = 1.8f;
 
@@ -29,6 +29,14 @@ bool lampOn = true;
 bool ceilingOn = true;
 bool lWasDown = false;
 bool kWasDown = false;
+bool fWasDown = false;
+bool eWasDown = false;
+
+bool inBed = false;
+bool onSofa = false;
+bool doorOpen = false;
+float doorAngle = 0.0f;
+bool snowmanHugged = false;
 
 struct Surface
 {
@@ -52,6 +60,30 @@ struct Prop
     glm::vec3 pos;
     float yaw;
     float scale = FURNITURE_SCALE;
+};
+
+struct AABB
+{
+    glm::vec3 min;
+    glm::vec3 max;
+
+    bool check(glm::vec3 pos, float r = 0.3f) const
+    {
+        return (pos.x + r >= min.x && pos.x - r <= max.x &&
+            pos.y + r >= min.y && pos.y - r <= max.y &&
+            pos.z + r >= min.z && pos.z - r <= max.z);
+    }
+};
+
+std::vector<AABB> colliders = {
+    { glm::vec3(-ROOM_W / 2, 0, -ROOM_D / 2), glm::vec3(-ROOM_W / 2 + 0.2f, ROOM_H, ROOM_D / 2) },
+    { glm::vec3(ROOM_W / 2 - 0.2f, 0, -ROOM_D / 2), glm::vec3(ROOM_W / 2, ROOM_H, ROOM_D / 2) },
+    { glm::vec3(-ROOM_W / 2, 0, ROOM_D / 2 - 0.2f), glm::vec3(ROOM_W / 2, ROOM_H, ROOM_D / 2) },
+    { glm::vec3(-ROOM_W / 2, 0, -ROOM_D / 2), glm::vec3(ROOM_W / 2, ROOM_H, -ROOM_D / 2 + 0.2f) },
+    { glm::vec3(-3.2f, 0, -2.3f), glm::vec3(-2.0f, 2.0f, -1.1f) },
+    { glm::vec3(-0.2f, 0, -2.5f), glm::vec3(1.2f, 1.5f, -1.5f) },
+    { glm::vec3(0.0f, 0, 1.0f), glm::vec3(1.2f, 1.5f, 2.0f) },
+    { glm::vec3(2.3f, 0, -1.8f), glm::vec3(3.5f, 3.0f, -0.2f) }
 };
 
 void framebufferSizeCallback(GLFWwindow* window, int width, int height)
@@ -86,17 +118,84 @@ void processInput(GLFWwindow* window, float dt)
 {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
+
+    if (keyPressedOnce(window, GLFW_KEY_E, eWasDown))
+    {
+        glm::vec3 doorPos(-1.2f, 1.0f, 2.72f);
+        if (glm::distance(camera.position, doorPos) < 3.0f)
+        {
+            doorOpen = !doorOpen;
+        }
+    }
+
+    if (keyPressedOnce(window, GLFW_KEY_F, fWasDown))
+    {
+        glm::vec3 bedPos(-2.6f, 1.2f, -1.71f);
+        glm::vec3 sofaPos(0.5f, 1.0f, -2.0f);
+        glm::vec3 snowmanPos(0.8f, 1.0f, 4.5f);
+        glm::vec3 deskLampPos(1.1f, 1.5f, 1.35f);
+
+        float distBed = glm::distance(camera.position, bedPos);
+        float distSofa = glm::distance(camera.position, sofaPos);
+        float distSnowman = glm::distance(camera.position, snowmanPos);
+        float distLamp = glm::distance(camera.position, deskLampPos);
+
+        if (distLamp < 2.0f)
+        {
+            lampOn = !lampOn;
+        }
+        else if (distBed < 2.5f)
+        {
+            inBed = !inBed;
+            onSofa = false;
+            if (inBed) camera.position = glm::vec3(-2.6f, 1.25f, -1.71f);
+            else camera.position = glm::vec3(-1.5f, 1.6f, -1.0f);
+        }
+        else if (distSofa < 2.2f)
+        {
+            onSofa = !onSofa;
+            inBed = false;
+            if (onSofa) camera.position = glm::vec3(0.5f, 1.15f, -1.7f);
+            else camera.position = glm::vec3(0.5f, 1.6f, -0.2f);
+        }
+        else if (distSnowman < 2.0f)
+        {
+            snowmanHugged = !snowmanHugged;
+        }
+        else
+        {
+            lampOn = !lampOn;
+        }
+    }
+
+    if (inBed || onSofa) return;
+
+    glm::vec3 oldPos = camera.position;
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) camera.move(Move::Forward, dt);
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) camera.move(Move::Backward, dt);
     if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) camera.move(Move::Left, dt);
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) camera.move(Move::Right, dt);
 
+    bool nearDoor = (camera.position.z > 2.2f && camera.position.x > -2.2f && camera.position.x < 0.2f);
+    if (!doorOpen && !nearDoor)
+    {
+        for (const auto& box : colliders)
+        {
+            if (box.check(camera.position))
+            {
+                camera.position = oldPos;
+                break;
+            }
+        }
+    }
+    else if (doorOpen)
+    {
+        camera.position.x = glm::clamp(camera.position.x, -12.0f, 12.0f);
+        camera.position.z = glm::clamp(camera.position.z, -10.0f, 6.0f);
+    }
+
     if (keyPressedOnce(window, GLFW_KEY_L, lWasDown)) lampOn = !lampOn;
     if (keyPressedOnce(window, GLFW_KEY_K, kWasDown)) ceilingOn = !ceilingOn;
-
-    float margin = 0.3f;
-    camera.position.x = glm::clamp(camera.position.x, -ROOM_W / 2 + margin, ROOM_W / 2 - margin);
-    camera.position.z = glm::clamp(camera.position.z, -ROOM_D / 2 + margin, ROOM_D / 2 - margin);
 }
 
 unsigned int loadTexture(const char* path)
@@ -119,7 +218,6 @@ unsigned int loadTexture(const char* path)
     }
     else
     {
-        std::cout << "Failed to load texture: " << path << std::endl;
         unsigned char gray[3] = { 180, 180, 180 };
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 1, 1, 0, GL_RGB, GL_UNSIGNED_BYTE, gray);
     }
@@ -244,9 +342,9 @@ unsigned int createBillboard()
 unsigned int createSnow(int count)
 {
     std::mt19937 rng(42);
-    std::uniform_real_distribution<float> distX(-10.0f, 10.0f);
+    std::uniform_real_distribution<float> distX(-15.0f, 15.0f);
     std::uniform_real_distribution<float> distY(0.0f, SNOW_HEIGHT);
-    std::uniform_real_distribution<float> distZ(-15.0f, -3.0f);
+    std::uniform_real_distribution<float> distZ(-25.0f, -3.0f);
     std::uniform_real_distribution<float> distSpeed(0.4f, 1.0f);
     std::uniform_real_distribution<float> distPhase(0.0f, 6.2832f);
 
@@ -339,7 +437,7 @@ int main()
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-    GLFWwindow* window = glfwCreateWindow(1280, 720, "Snow Cabin", nullptr, nullptr);
+    GLFWwindow* window = glfwCreateWindow(1280, 720, "Snow Cabin - Advanced Edition", nullptr, nullptr);
     if (!window)
     {
         std::cout << "Failed to create window" << std::endl;
@@ -376,6 +474,26 @@ int main()
     unsigned int darkTex = makeColorTexture(60, 60, 65);
     unsigned int sootTex = makeColorTexture(20, 15, 12);
     unsigned int blackTex = makeColorTexture(0, 0, 0);
+
+    unsigned int giftRedTex = makeColorTexture(200, 35, 35);
+    unsigned int giftGreenTex = makeColorTexture(25, 135, 55);
+    unsigned int giftGoldTex = makeColorTexture(235, 185, 30);
+    unsigned int giftBlueTex = makeColorTexture(30, 80, 210);
+    unsigned int ribbonGold = makeColorTexture(255, 215, 0);
+    unsigned int ribbonWhite = makeColorTexture(245, 245, 245);
+
+    unsigned int curtainVelvet = makeColorTexture(45, 75, 115);
+    unsigned int curtainTrim = makeColorTexture(220, 185, 75);
+
+    unsigned int snowmanWhite = makeColorTexture(245, 245, 250);
+    unsigned int coalBlack = makeColorTexture(20, 20, 20);
+    unsigned int carrotOrange = makeColorTexture(230, 110, 20);
+    unsigned int scarfRed = makeColorTexture(210, 40, 40);
+    unsigned int mountainTex = makeColorTexture(55, 75, 100);
+    unsigned int pineGreenTex = makeColorTexture(20, 50, 32);
+    unsigned int woodDoorTex = makeColorTexture(110, 65, 35);
+    unsigned int brassKnobTex = makeColorTexture(200, 175, 80);
+    unsigned int paintingTex = makeColorTexture(180, 150, 110);
 
     Model tree;
     tree.load("assets/models/christmas_tree/obj.obj");
@@ -433,11 +551,31 @@ int main()
         backWallPiece(winX0, winX1, winY1, H, wallTex)
     };
 
-    Surface ground{ makeModel(glm::vec3(0.0f, -0.01f, -11.375f), 0.0f, glm::vec3(1, 0, 0), glm::vec3(40.0f, 1.0f, 17.25f)), blackTex };
-    ground.emissive = glm::vec3(0.40f, 0.45f, 0.58f);
-    Surface sky{ makeModel(glm::vec3(0.0f, 8.0f, -20.0f), 90.0f, glm::vec3(1, 0, 0), glm::vec3(40.0f, 1.0f, 20.0f)), blackTex };
-    sky.emissive = glm::vec3(0.03f, 0.06f, 0.16f);
-    std::vector<Surface> outside = { ground, sky };
+    Surface ground{ makeModel(glm::vec3(0.0f, -0.02f, 0.0f), 0.0f, glm::vec3(1, 0, 0), glm::vec3(40.0f, 1.0f, 40.0f)), blackTex };
+    ground.emissive = glm::vec3(0.38f, 0.45f, 0.60f);
+    Surface sky{ makeModel(glm::vec3(0.0f, 8.0f, -15.0f), 90.0f, glm::vec3(1, 0, 0), glm::vec3(50.0f, 1.0f, 20.0f)), blackTex };
+    sky.emissive = glm::vec3(0.02f, 0.04f, 0.12f);
+
+    std::vector<Surface> outside = {
+        ground, sky,
+        box(glm::vec3(-10.0f, 3.5f, -18.0f), glm::vec3(16.0f, 7.0f, 2.0f), mountainTex),
+        box(glm::vec3(10.0f, 4.0f, -20.0f), glm::vec3(18.0f, 8.0f, 2.0f), mountainTex),
+        box(glm::vec3(-4.5f, 1.2f, 3.5f), glm::vec3(1.0f, 2.4f, 1.0f), pineGreenTex),
+        box(glm::vec3(5.0f, 1.5f, 2.0f), glm::vec3(1.2f, 3.0f, 1.2f), pineGreenTex),
+        box(glm::vec3(-5.5f, 1.8f, -4.0f), glm::vec3(1.4f, 3.5f, 1.4f), pineGreenTex),
+        box(glm::vec3(6.0f, 1.3f, -5.0f), glm::vec3(1.1f, 2.6f, 1.1f), pineGreenTex),
+
+        box(glm::vec3(0.8f, 0.35f, 4.5f), glm::vec3(0.6f, 0.6f, 0.6f), snowmanWhite),
+        box(glm::vec3(0.8f, 0.85f, 4.5f), glm::vec3(0.45f, 0.45f, 0.45f), snowmanWhite),
+        box(glm::vec3(0.8f, 1.25f, 4.5f), glm::vec3(0.32f, 0.32f, 0.32f), snowmanWhite),
+        box(glm::vec3(0.72f, 1.30f, 4.67f), glm::vec3(0.05f, 0.05f, 0.05f), coalBlack),
+        box(glm::vec3(0.88f, 1.30f, 4.67f), glm::vec3(0.05f, 0.05f, 0.05f), coalBlack),
+        box(glm::vec3(0.8f, 1.25f, 4.72f), glm::vec3(0.06f, 0.06f, 0.15f), carrotOrange),
+        box(glm::vec3(0.8f, 1.08f, 4.5f), glm::vec3(0.48f, 0.1f, 0.48f), scarfRed),
+        box(glm::vec3(0.8f, 1.50f, 4.5f), glm::vec3(0.28f, 0.25f, 0.28f), coalBlack)
+    };
+    outside[2].emissive = glm::vec3(0.05f, 0.08f, 0.15f);
+    outside[3].emissive = glm::vec3(0.06f, 0.09f, 0.18f);
 
     std::vector<Surface> furniture = {
         box(glm::vec3(standPos.x, standTop + 0.05f, standPos.z), glm::vec3(0.06f, 0.1f, 0.06f), creamTex),
@@ -450,15 +588,43 @@ int main()
         box(glm::vec3(winX1, 1.65f, -2.75f), glm::vec3(0.08f, 1.5f, 0.15f), floorTex),
         box(glm::vec3(0.5f, winY1, -2.75f), glm::vec3(3.68f, 0.08f, 0.15f), floorTex),
 
+        box(glm::vec3(0.5f, 2.47f, -2.72f), glm::vec3(4.1f, 0.04f, 0.06f), curtainTrim),
+        box(glm::vec3(-1.18f, 1.55f, -2.68f), glm::vec3(0.42f, 1.7f, 0.07f), curtainVelvet),
+        box(glm::vec3(-1.38f, 1.55f, -2.68f), glm::vec3(0.12f, 1.7f, 0.08f), curtainTrim),
+        box(glm::vec3(2.18f, 1.55f, -2.68f), glm::vec3(0.42f, 1.7f, 0.07f), curtainVelvet),
+        box(glm::vec3(2.38f, 1.55f, -2.68f), glm::vec3(0.12f, 1.7f, 0.08f), curtainTrim),
+        box(glm::vec3(0.5f, 2.34f, -2.68f), glm::vec3(3.95f, 0.22f, 0.08f), curtainVelvet),
+        box(glm::vec3(0.5f, 2.22f, -2.68f), glm::vec3(3.95f, 0.05f, 0.09f), curtainTrim),
+
         box(glm::vec3(3.15f, 1.5f, -1.0f), glm::vec3(0.7f, 3.0f, 1.8f), stoneTex),
         box(glm::vec3(2.55f, 0.06f, -1.0f), glm::vec3(0.5f, 0.12f, 2.0f), stoneTex),
         box(glm::vec3(2.79f, 0.42f, -1.0f), glm::vec3(0.02f, 0.6f, 0.9f), sootTex),
         box(glm::vec3(2.62f, 1.2f, -1.0f), glm::vec3(0.35f, 0.08f, 2.0f), floorTex),
         box(glm::vec3(2.6f, 0.27f, -1.15f), glm::vec3(0.12f, 0.1f, 0.6f), floorTex),
         box(glm::vec3(2.6f, 0.27f, -0.85f), glm::vec3(0.12f, 0.1f, 0.6f), floorTex),
+        box(glm::vec3(-0.85f, 1.0f, 2.68f), glm::vec3(0.04f, 0.04f, 0.06f), darkTex),
 
-        box(glm::vec3(-1.2f, 1.05f, 2.72f), glm::vec3(0.9f, 2.1f, 0.06f), floorTex),
-        box(glm::vec3(-0.85f, 1.0f, 2.68f), glm::vec3(0.04f, 0.04f, 0.06f), darkTex)
+        box(glm::vec3(-3.47f, 1.8f, 0.0f), glm::vec3(0.04f, 0.9f, 1.2f), paintingTex)
+    };
+
+    std::vector<Surface> giftBoxes = {
+        box(glm::vec3(2.15f, 0.14f, 1.55f), glm::vec3(0.28f, 0.28f, 0.28f), giftRedTex),
+        box(glm::vec3(2.15f, 0.142f, 1.55f), glm::vec3(0.29f, 0.29f, 0.05f), ribbonGold),
+        box(glm::vec3(2.15f, 0.142f, 1.55f), glm::vec3(0.05f, 0.29f, 0.29f), ribbonGold),
+
+        box(glm::vec3(2.75f, 0.12f, 1.85f), glm::vec3(0.35f, 0.24f, 0.28f), giftGreenTex),
+        box(glm::vec3(2.75f, 0.122f, 1.85f), glm::vec3(0.36f, 0.25f, 0.05f), ribbonWhite),
+        box(glm::vec3(2.75f, 0.122f, 1.85f), glm::vec3(0.05f, 0.25f, 0.29f), ribbonWhite),
+
+        box(glm::vec3(2.45f, 0.15f, 1.45f), glm::vec3(0.30f, 0.30f, 0.30f), giftGoldTex),
+        box(glm::vec3(2.45f, 0.152f, 1.45f), glm::vec3(0.31f, 0.31f, 0.05f), giftRedTex),
+        box(glm::vec3(2.45f, 0.152f, 1.45f), glm::vec3(0.05f, 0.31f, 0.31f), giftRedTex),
+
+        box(glm::vec3(2.20f, 0.11f, 2.10f), glm::vec3(0.26f, 0.22f, 0.26f), giftBlueTex),
+        box(glm::vec3(2.20f, 0.112f, 2.10f), glm::vec3(0.27f, 0.23f, 0.04f), ribbonWhite),
+
+        box(glm::vec3(2.15f, 0.34f, 1.55f), glm::vec3(0.18f, 0.18f, 0.18f), giftGoldTex),
+        box(glm::vec3(2.15f, 0.342f, 1.55f), glm::vec3(0.19f, 0.19f, 0.03f), giftRedTex)
     };
 
     std::vector<Surface> glows = {
@@ -495,6 +661,9 @@ int main()
         lastFrame = now;
         processInput(window, dt);
 
+        float targetAngle = doorOpen ? 90.0f : 0.0f;
+        doorAngle += (targetAngle - doorAngle) * (dt * 6.0f);
+
         int fbW, fbH;
         glfwGetFramebufferSize(window, &fbW, &fbH);
         if (fbH == 0)
@@ -527,6 +696,24 @@ int main()
         shader.setVec3("lightPos[2]", firePos);
         shader.setVec3("lightColor[2]", fireColor);
         shader.setFloat("lightIntensity[2]", 1.4f + flicker);
+
+        for (int i = 0; i < 4; i++)
+        {
+            float phase = now * 3.0f + i * 1.57f;
+            glm::vec3 treeLightColor = glm::vec3(
+                0.5f + 0.5f * std::sin(phase),
+                0.5f + 0.5f * std::sin(phase + 2.09f),
+                0.5f + 0.5f * std::sin(phase + 4.18f)
+            );
+            std::string posName = "lightPos[" + std::to_string(3 + i) + "]";
+            std::string colName = "lightColor[" + std::to_string(3 + i) + "]";
+            std::string intName = "lightIntensity[" + std::to_string(3 + i) + "]";
+
+            shader.setVec3(posName.c_str(), glm::vec3(2.5f + (i % 2) * 0.4f - 0.2f, 1.0f + i * 0.3f, 1.9f + (i / 2) * 0.4f - 0.2f));
+            shader.setVec3(colName.c_str(), treeLightColor);
+            shader.setFloat(intName.c_str(), 0.8f);
+        }
+
         shader.setFloat("ambient", ceilingOn ? 0.15f : 0.04f);
         shader.setFloat("exposure", 1.1f);
         shader.setFloat("alpha", 1.0f);
@@ -536,9 +723,32 @@ int main()
         drawSurfaces(shader, quad, 6, outside);
         drawSurfaces(shader, quad, 6, room);
         drawSurfaces(shader, cube, 36, furniture);
+
+        {
+            glm::mat4 doorMat = glm::mat4(1.0f);
+            doorMat = glm::translate(doorMat, glm::vec3(-1.65f, 1.05f, 2.72f));
+            doorMat = glm::rotate(doorMat, glm::radians(doorAngle), glm::vec3(0, 1, 0));
+            doorMat = glm::scale(doorMat, glm::vec3(0.9f, 2.1f, 0.06f));
+            shader.setMat4("model", doorMat);
+            shader.setVec2("uvScale", glm::vec2(1.0f));
+            shader.setVec2("uvOffset", glm::vec2(0.0f));
+            shader.setVec3("emissive", glm::vec3(0.0f));
+            glBindTexture(GL_TEXTURE_2D, woodDoorTex);
+            glDrawArrays(GL_TRIANGLES, 0, 36);
+
+            glm::mat4 knobMat = doorMat;
+            knobMat = glm::translate(knobMat, glm::vec3(0.35f, 0.0f, 0.55f));
+            knobMat = glm::scale(knobMat, glm::vec3(0.08f, 0.08f, 0.15f));
+            shader.setMat4("model", knobMat);
+            glBindTexture(GL_TEXTURE_2D, brassKnobTex);
+            glDrawArrays(GL_TRIANGLES, 0, 36);
+        }
+
         for (const Prop& p : props)
             p.model->draw(shader, placeModel(*p.model, p.pos, p.yaw, p.scale));
+
         tree.draw(shader, makeModel(glm::vec3(2.5f, 0.0f, 1.9f), 0.0f, glm::vec3(0, 1, 0), glm::vec3(0.22f)));
+        drawSurfaces(shader, cube, 36, giftBoxes);
         drawSurfaces(shader, cube, 36, glows);
 
         glEnable(GL_BLEND);
