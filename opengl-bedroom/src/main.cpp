@@ -62,29 +62,49 @@ struct Prop
     float scale = FURNITURE_SCALE;
 };
 
+const float DOOR_X0 = -1.65f;
+const float DOOR_X1 = -0.75f;
+const float DOOR_H = 2.1f;
+const float PLAYER_RADIUS = 0.2f;
+
 struct AABB
 {
     glm::vec3 min;
     glm::vec3 max;
 
-    bool check(glm::vec3 pos, float r = 0.3f) const
+    bool check(glm::vec3 pos, float r = PLAYER_RADIUS) const
     {
-        return (pos.x + r >= min.x && pos.x - r <= max.x &&
-            pos.y + r >= min.y && pos.y - r <= max.y &&
-            pos.z + r >= min.z && pos.z - r <= max.z);
+        return pos.x + r >= min.x && pos.x - r <= max.x &&
+            pos.z + r >= min.z && pos.z - r <= max.z;
     }
 };
 
+const float WALL_T = 0.2f;
+
 std::vector<AABB> colliders = {
-    { glm::vec3(-ROOM_W / 2, 0, -ROOM_D / 2), glm::vec3(-ROOM_W / 2 + 0.2f, ROOM_H, ROOM_D / 2) },
-    { glm::vec3(ROOM_W / 2 - 0.2f, 0, -ROOM_D / 2), glm::vec3(ROOM_W / 2, ROOM_H, ROOM_D / 2) },
-    { glm::vec3(-ROOM_W / 2, 0, ROOM_D / 2 - 0.2f), glm::vec3(ROOM_W / 2, ROOM_H, ROOM_D / 2) },
-    { glm::vec3(-ROOM_W / 2, 0, -ROOM_D / 2), glm::vec3(ROOM_W / 2, ROOM_H, -ROOM_D / 2 + 0.2f) },
-    { glm::vec3(-3.2f, 0, -2.3f), glm::vec3(-2.0f, 2.0f, -1.1f) },
-    { glm::vec3(-0.2f, 0, -2.5f), glm::vec3(1.2f, 1.5f, -1.5f) },
-    { glm::vec3(0.0f, 0, 1.0f), glm::vec3(1.2f, 1.5f, 2.0f) },
-    { glm::vec3(2.3f, 0, -1.8f), glm::vec3(3.5f, 3.0f, -0.2f) }
+    { glm::vec3(-ROOM_W / 2 - WALL_T, 0, -ROOM_D / 2 - WALL_T), glm::vec3(-ROOM_W / 2, ROOM_H, ROOM_D / 2 + WALL_T) },
+    { glm::vec3(ROOM_W / 2, 0, -ROOM_D / 2 - WALL_T), glm::vec3(ROOM_W / 2 + WALL_T, ROOM_H, ROOM_D / 2 + WALL_T) },
+    { glm::vec3(-ROOM_W / 2, 0, -ROOM_D / 2 - WALL_T), glm::vec3(ROOM_W / 2, ROOM_H, -ROOM_D / 2) },
+    { glm::vec3(-ROOM_W / 2, 0, ROOM_D / 2), glm::vec3(DOOR_X0, ROOM_H, ROOM_D / 2 + WALL_T) },
+    { glm::vec3(DOOR_X1, 0, ROOM_D / 2), glm::vec3(ROOM_W / 2, ROOM_H, ROOM_D / 2 + WALL_T) },
+    { glm::vec3(2.3f, 0, -1.9f), glm::vec3(3.5f, ROOM_H, -0.1f) },
+    { glm::vec3(2.0f, 0, 1.3f), glm::vec3(2.95f, ROOM_H, 2.25f) },
+    { glm::vec3(0.5f, 0, 4.2f), glm::vec3(1.1f, 1.7f, 4.8f) },
+    { glm::vec3(-5.0f, 0, 3.0f), glm::vec3(-4.0f, 2.4f, 4.0f) },
+    { glm::vec3(4.4f, 0, 1.4f), glm::vec3(5.6f, 3.0f, 2.6f) },
+    { glm::vec3(-6.2f, 0, -4.7f), glm::vec3(-4.8f, 3.5f, -3.3f) },
+    { glm::vec3(5.45f, 0, -5.55f), glm::vec3(6.55f, 2.6f, -4.45f) }
 };
+
+const AABB doorCollider = { glm::vec3(DOOR_X0, 0, ROOM_D / 2 - 0.05f), glm::vec3(DOOR_X1, DOOR_H, ROOM_D / 2 + WALL_T) };
+
+bool blocked(glm::vec3 pos)
+{
+    if (!doorOpen && doorCollider.check(pos)) return true;
+    for (const AABB& box : colliders)
+        if (box.check(pos)) return true;
+    return false;
+}
 
 void framebufferSizeCallback(GLFWwindow* window, int width, int height)
 {
@@ -121,7 +141,7 @@ void processInput(GLFWwindow* window, float dt)
 
     if (keyPressedOnce(window, GLFW_KEY_E, eWasDown))
     {
-        glm::vec3 doorPos(-1.2f, 1.0f, 2.72f);
+        glm::vec3 doorPos((DOOR_X0 + DOOR_X1) / 2, 1.0f, ROOM_D / 2);
         if (glm::distance(camera.position, doorPos) < 3.0f)
         {
             doorOpen = !doorOpen;
@@ -156,7 +176,7 @@ void processInput(GLFWwindow* window, float dt)
             onSofa = !onSofa;
             inBed = false;
             if (onSofa) camera.position = glm::vec3(0.5f, 1.15f, -1.7f);
-            else camera.position = glm::vec3(0.5f, 1.6f, -0.2f);
+            else camera.position = glm::vec3(0.5f, 1.6f, 0.3f);
         }
         else if (distSnowman < 2.0f)
         {
@@ -176,23 +196,21 @@ void processInput(GLFWwindow* window, float dt)
     if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) camera.move(Move::Left, dt);
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) camera.move(Move::Right, dt);
 
-    bool nearDoor = (camera.position.z > 2.2f && camera.position.x > -2.2f && camera.position.x < 0.2f);
-    if (!doorOpen && !nearDoor)
+    glm::vec3 target = camera.position;
+    camera.position = oldPos;
+    if (blocked(oldPos))
     {
-        for (const auto& box : colliders)
-        {
-            if (box.check(camera.position))
-            {
-                camera.position = oldPos;
-                break;
-            }
-        }
+        camera.position = target;
     }
-    else if (doorOpen)
+    else
     {
-        camera.position.x = glm::clamp(camera.position.x, -12.0f, 12.0f);
-        camera.position.z = glm::clamp(camera.position.z, -10.0f, 6.0f);
+        camera.position.x = target.x;
+        if (blocked(camera.position)) camera.position.x = oldPos.x;
+        camera.position.z = target.z;
+        if (blocked(camera.position)) camera.position.z = oldPos.z;
     }
+    camera.position.x = glm::clamp(camera.position.x, -12.0f, 12.0f);
+    camera.position.z = glm::clamp(camera.position.z, -10.0f, 6.0f);
 
     if (keyPressedOnce(window, GLFW_KEY_L, lWasDown)) lampOn = !lampOn;
     if (keyPressedOnce(window, GLFW_KEY_K, kWasDown)) ceilingOn = !ceilingOn;
@@ -416,6 +434,16 @@ Surface backWallPiece(float x0, float x1, float y0, float y1, unsigned int tex)
     return s;
 }
 
+Surface frontWallPiece(float x0, float x1, float y0, float y1, unsigned int tex)
+{
+    glm::vec3 center((x0 + x1) / 2, (y0 + y1) / 2, ROOM_D / 2);
+    glm::vec3 size(x1 - x0, 1.0f, y1 - y0);
+    Surface s{ makeModel(center, -90.0f, glm::vec3(1, 0, 0), size), tex };
+    s.uvScale = glm::vec2(size.x, size.z) * WALL_TILE;
+    s.uvOffset = glm::vec2(x0 + ROOM_W / 2, y0) * WALL_TILE;
+    return s;
+}
+
 void drawSurfaces(const Shader& shader, unsigned int vao, int vertexCount, const std::vector<Surface>& surfaces)
 {
     glBindVertexArray(vao);
@@ -535,16 +563,35 @@ int main()
         { &bookcase, glm::vec3(-3.25f, 0.0f, 2.0f), -90.0f },
         { &plant, glm::vec3(1.75f, 0.0f, -2.2f), 0.0f }
     };
+
+    for (const Prop& p : props)
+    {
+        if (p.model == &rug || p.model == &ceilingLamp || p.model == &deskLamp || p.model == &books) continue;
+        glm::mat4 m = placeModel(*p.model, p.pos, p.yaw, p.scale);
+        AABB box = { glm::vec3(1e30f), glm::vec3(-1e30f) };
+        for (int i = 0; i < 8; i++)
+        {
+            glm::vec3 c((i & 1) ? p.model->boundsMax.x : p.model->boundsMin.x,
+                (i & 2) ? p.model->boundsMax.y : p.model->boundsMin.y,
+                (i & 4) ? p.model->boundsMax.z : p.model->boundsMin.z);
+            glm::vec3 w = glm::vec3(m * glm::vec4(c, 1.0f));
+            box.min = glm::min(box.min, w);
+            box.max = glm::max(box.max, w);
+        }
+        colliders.push_back(box);
+    }
     const float winX0 = -1.3f, winX1 = 2.3f, winY0 = 0.9f, winY1 = 2.4f;
 
     Surface floorS{ makeModel(glm::vec3(0.0f, 0.0f, 0.0f), 0.0f, glm::vec3(1, 0, 0), glm::vec3(W, 1, D)), floorTex, glm::vec2(W, D) * 0.5f };
     Surface ceilS{ makeModel(glm::vec3(0.0f, H, 0.0f), 180.0f, glm::vec3(1, 0, 0), glm::vec3(W, 1, D)), wallTex, glm::vec2(W, D) * WALL_TILE };
-    Surface frontS{ makeModel(glm::vec3(0.0f, H / 2, D / 2), -90.0f, glm::vec3(1, 0, 0), glm::vec3(W, 1, H)), wallTex, glm::vec2(W, H) * WALL_TILE };
     Surface leftS{ makeModel(glm::vec3(-W / 2, H / 2, 0.0f), -90.0f, glm::vec3(0, 0, 1), glm::vec3(H, 1, D)), wallTex, glm::vec2(H, D) * WALL_TILE };
     Surface rightS{ makeModel(glm::vec3(W / 2, H / 2, 0.0f), 90.0f, glm::vec3(0, 0, 1), glm::vec3(H, 1, D)), wallTex, glm::vec2(H, D) * WALL_TILE };
 
     std::vector<Surface> room = {
-        floorS, ceilS, frontS, leftS, rightS,
+        floorS, ceilS, leftS, rightS,
+        frontWallPiece(-W / 2, DOOR_X0, 0.0f, H, wallTex),
+        frontWallPiece(DOOR_X1, W / 2, 0.0f, H, wallTex),
+        frontWallPiece(DOOR_X0, DOOR_X1, DOOR_H, H, wallTex),
         backWallPiece(-W / 2, winX0, 0.0f, H, wallTex),
         backWallPiece(winX1, W / 2, 0.0f, H, wallTex),
         backWallPiece(winX0, winX1, 0.0f, winY0, wallTex),
@@ -602,7 +649,6 @@ int main()
         box(glm::vec3(2.62f, 1.2f, -1.0f), glm::vec3(0.35f, 0.08f, 2.0f), floorTex),
         box(glm::vec3(2.6f, 0.27f, -1.15f), glm::vec3(0.12f, 0.1f, 0.6f), floorTex),
         box(glm::vec3(2.6f, 0.27f, -0.85f), glm::vec3(0.12f, 0.1f, 0.6f), floorTex),
-        box(glm::vec3(-0.85f, 1.0f, 2.68f), glm::vec3(0.04f, 0.04f, 0.06f), darkTex),
 
         box(glm::vec3(-3.47f, 1.8f, 0.0f), glm::vec3(0.04f, 0.9f, 1.2f), paintingTex)
     };
@@ -711,7 +757,7 @@ int main()
 
             shader.setVec3(posName.c_str(), glm::vec3(2.5f + (i % 2) * 0.4f - 0.2f, 1.0f + i * 0.3f, 1.9f + (i / 2) * 0.4f - 0.2f));
             shader.setVec3(colName.c_str(), treeLightColor);
-            shader.setFloat(intName.c_str(), 0.8f);
+            shader.setFloat(intName.c_str(), 0.35f);
         }
 
         shader.setFloat("ambient", ceilingOn ? 0.15f : 0.04f);
@@ -725,10 +771,12 @@ int main()
         drawSurfaces(shader, cube, 36, furniture);
 
         {
-            glm::mat4 doorMat = glm::mat4(1.0f);
-            doorMat = glm::translate(doorMat, glm::vec3(-1.65f, 1.05f, 2.72f));
-            doorMat = glm::rotate(doorMat, glm::radians(doorAngle), glm::vec3(0, 1, 0));
-            doorMat = glm::scale(doorMat, glm::vec3(0.9f, 2.1f, 0.06f));
+            float doorW = DOOR_X1 - DOOR_X0;
+            glm::mat4 hinge = glm::mat4(1.0f);
+            hinge = glm::translate(hinge, glm::vec3(DOOR_X0, DOOR_H / 2, D / 2 - 0.03f));
+            hinge = glm::rotate(hinge, glm::radians(doorAngle), glm::vec3(0, 1, 0));
+            glm::mat4 doorMat = glm::translate(hinge, glm::vec3(doorW / 2, 0.0f, 0.0f));
+            doorMat = glm::scale(doorMat, glm::vec3(doorW, DOOR_H, 0.06f));
             shader.setMat4("model", doorMat);
             shader.setVec2("uvScale", glm::vec2(1.0f));
             shader.setVec2("uvOffset", glm::vec2(0.0f));
@@ -736,9 +784,8 @@ int main()
             glBindTexture(GL_TEXTURE_2D, woodDoorTex);
             glDrawArrays(GL_TRIANGLES, 0, 36);
 
-            glm::mat4 knobMat = doorMat;
-            knobMat = glm::translate(knobMat, glm::vec3(0.35f, 0.0f, 0.55f));
-            knobMat = glm::scale(knobMat, glm::vec3(0.08f, 0.08f, 0.15f));
+            glm::mat4 knobMat = glm::translate(hinge, glm::vec3(doorW - 0.1f, -0.05f, -0.05f));
+            knobMat = glm::scale(knobMat, glm::vec3(0.06f, 0.06f, 0.06f));
             shader.setMat4("model", knobMat);
             glBindTexture(GL_TEXTURE_2D, brassKnobTex);
             glDrawArrays(GL_TRIANGLES, 0, 36);

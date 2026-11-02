@@ -1,5 +1,5 @@
 #version 330 core
-#define NUM_LIGHTS 3
+#define NUM_LIGHTS 7
 
 in vec3 FragPos;
 in vec3 Normal;
